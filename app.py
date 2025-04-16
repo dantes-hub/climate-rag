@@ -43,7 +43,7 @@ Answer:
 
 qa_chain = RetrievalQA.from_chain_type(
     llm=llm,
-    retriever=vectorstore.as_retriever(),
+    retriever=vectorstore.as_retriever(search_kwargs={"k": 10}),
     return_source_documents=True,
     chain_type_kwargs={"prompt": custom_prompt}
 )
