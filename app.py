@@ -6,7 +6,7 @@ from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
-# Load environment variables (only used locally)
+# Load environment variables
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
@@ -14,6 +14,14 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 st.set_page_config(page_title="RAG Climate QA", layout="centered")
 st.title("RAG Q&A on New York Climate by Anka")
 st.markdown("Ask a question like: *What was the temperature in New York in 1750?*")
+
+# Mode selector
+mode = st.radio(
+    "Choose QA Mode:",
+    ["RAG (with retrieval)", "GPT-only (no retrieval)"],
+    index=0,
+    help="RAG uses vector DB, GPT-only uses no context"
+)
 
 # Load vectorstore
 @st.cache_resource
@@ -23,9 +31,10 @@ def load_vectorstore():
 
 vectorstore = load_vectorstore()
 
-# Build RAG chain
+# LLM setup
 llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=openai_api_key)
 
+# RAG prompt
 custom_prompt = PromptTemplate(
     template="""
 You are a helpful weather assistant. Use the context below to answer the question.
@@ -41,6 +50,7 @@ Answer:
     input_variables=["context", "question"],
 )
 
+# RAG chain
 qa_chain = RetrievalQA.from_chain_type(
     llm=llm,
     retriever=vectorstore.as_retriever(search_kwargs={"k": 12}),
@@ -52,9 +62,16 @@ qa_chain = RetrievalQA.from_chain_type(
 user_question = st.text_input("Your question:", placeholder="e.g., What was the average temp in 1800?")
 if user_question:
     with st.spinner("Thinking..."):
-        response = qa_chain.invoke(user_question)
-        st.subheader("Answer")
-        st.write(response["result"])
-        st.subheader("Retrieved Sources")
-        for doc in response["source_documents"]:
-            st.markdown(f"- {doc.page_content}")
+        if mode == "RAG (with retrieval)":
+            response = qa_chain.invoke(user_question)
+            st.subheader("Answer (RAG)")
+            st.write(response["result"])
+
+            st.subheader("Retrieved Sources")
+            for doc in response["source_documents"]:
+                st.markdown(f"- {doc.page_content}")
+
+        else:
+            response = llm.invoke(user_question)
+            st.subheader("Answer (GPT-Only)")
+            st.write(response.content)
