@@ -3,7 +3,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain_core.documents import Document  # <-- this is the missing line!
+from langchain_core.documents import Document  
 
 
 
