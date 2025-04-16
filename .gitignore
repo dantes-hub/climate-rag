@@ -1,3 +1,4 @@
 .env
 __pycache__/
 faiss_index/*.pkl
+data/global_temperatures.csv
