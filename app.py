@@ -12,7 +12,7 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 
 # UI config
 st.set_page_config(page_title="RAG Climate QA", layout="centered")
-st.title("🌡️ Retrieval-Augmented Q&A on New York Climate")
+st.title(" Retrieval-Augmented Q&A on New York Climate")
 st.markdown("Ask a question like: *What was the temperature in New York in 1750?*")
 
 # Load vectorstore
@@ -53,8 +53,8 @@ user_question = st.text_input("Your question:", placeholder="e.g., What was the 
 if user_question:
     with st.spinner("Thinking..."):
         response = qa_chain.invoke(user_question)
-        st.subheader("🧠 Answer")
+        st.subheader("Answer")
         st.write(response["result"])
-        st.subheader("📚 Retrieved Sources")
+        st.subheader("Retrieved Sources")
         for doc in response["source_documents"]:
             st.markdown(f"- {doc.page_content}")
