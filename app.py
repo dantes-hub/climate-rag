@@ -12,7 +12,7 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 
 # UI config
 st.set_page_config(page_title="RAG Climate QA", layout="centered")
-st.title(" Retrieval-Augmented Q&A on New York Climate")
+st.title(" Retrieval-Augmented Q&A on New York Climate ,Ankama")
 st.markdown("Ask a question like: *What was the temperature in New York in 1750?*")
 
 # Load vectorstore
