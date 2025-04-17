@@ -12,12 +12,12 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 
 # UI setup
 st.set_page_config(page_title="RAG Climate QA", layout="centered")
-st.title("🌎 RAG Q&A on New York Climate by Anka")
+st.title(" RAG Q&A Climate(New York) by Anka")
 
 # Dropdown to choose dataset
 qa_type = st.selectbox(
     "Choose Dataset Type",
-    ["📜 Historical Climate", "🔮 Forecast Climate"],
+    ["Historical Climate", "Forecast Climate"],
     index=0,
 )
 
@@ -71,13 +71,13 @@ if question:
                 chain_type_kwargs={"prompt": custom_prompt}
             )
             response = qa_chain.invoke(question)
-            st.subheader("📬 Answer (RAG)")
+            st.subheader(" Answer (RAG)")
             st.write(response["result"])
 
-            st.subheader("📚 Retrieved Sources")
+            st.subheader(" Retrieved Sources")
             for doc in response["source_documents"]:
                 st.markdown(f"- {doc.page_content}")
         else:
             response = llm.invoke(question)
-            st.subheader("🤖 Answer (GPT Only)")
+            st.subheader(" Answer (GPT Only)")
             st.write(response.content)
