@@ -57,7 +57,7 @@ if question:
     with st.spinner("Thinking..."):
 
         # Choose vectorstore path based on dropdown
-        if qa_type == "📜 Historical Climate":
+        if qa_type == "Historical Climate":
             index_path = "faiss_index"
         else:
             index_path = "faiss_index_forecast"
@@ -71,13 +71,13 @@ if question:
                 chain_type_kwargs={"prompt": custom_prompt}
             )
             response = qa_chain.invoke(question)
-            st.subheader(" Answer (RAG)")
+            st.subheader("Answer (RAG)")
             st.write(response["result"])
 
-            st.subheader(" Retrieved Sources")
+            st.subheader("Retrieved Sources")
             for doc in response["source_documents"]:
                 st.markdown(f"- {doc.page_content}")
         else:
             response = llm.invoke(question)
-            st.subheader(" Answer (GPT Only)")
+            st.subheader("Answer (GPT Only)")
             st.write(response.content)
