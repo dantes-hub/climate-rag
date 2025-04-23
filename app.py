@@ -22,7 +22,7 @@ def download_and_extract_faiss_index():
         z.extractall(index_dir)
         st.success("FAISS index downloaded and extracted.")
 
-# Load .env
+# Load environment variables
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
@@ -31,40 +31,45 @@ st.set_page_config(page_title="RAG Assistant | Climate & Finance", layout="cente
 st.title("RAG Q&A Assistant by Anka")
 st.markdown("Ask intelligent questions based on retrieved data from vector databases:")
 
-# Vector DB selector
-qa_type = st.selectbox(
-    "Select Vector Database Source",
-    ["Historical Climate", "Forecast Climate", "Stock History"],
-    index=0,
-)
+# Layout split: left = controls, right = question/results
+col1, col2 = st.columns([1, 2])
 
-# Sample questions (auto-trigger)
-sample_qs = {
-    "Stock History": [
-        "What was the closing price of Tesla on July 2, 2020?",
-        "What was Apple’s highest price in 2020?",
-        "How did Microsoft perform during 2019?",
-    ],
-    "Historical Climate": [
-        "What was the average temperature in New York in July 1990?",
-        "How did the climate change between 1900 and 2000 in New York?",
-    ],
-    "Forecast Climate": [
-        "How will the climate in New York be in 2026?",
-        "Is it getting hotter in New York between 2025 and 2028?",
-    ]
-}
+with col1:
+    # Vector DB selector
+    qa_type = st.selectbox(
+        "Select Vector Database Source",
+        ["Historical Climate", "Forecast Climate", "Stock History"],
+        index=0,
+    )
 
-# Question input (auto-fill from sample)
-selected_q = st.selectbox("Sample Questions", [""] + sample_qs.get(qa_type, []))
-if selected_q:
-    st.session_state["question"] = selected_q
-question = st.text_input("Ask your question:", value=st.session_state.get("question", ""))
+    # Mode selector
+    mode = st.radio("Answering Mode", ["RAG (with retrieval)", "GPT-only (no retrieval)"])
 
-# Mode selector
-mode = st.radio("Answering Mode", ["RAG (with retrieval)", "GPT-only (no retrieval)"])
+    # Sample questions per dataset
+    sample_qs = {
+        "Stock History": [
+            "What was the closing price of Tesla on July 2, 2020?",
+            "What was Apple’s highest price in 2020?",
+            "How did Microsoft perform during 2019?",
+        ],
+        "Historical Climate": [
+            "What was the average temperature in New York in July 1990?",
+            "How did the climate change between 1900 and 2000 in New York?",
+        ],
+        "Forecast Climate": [
+            "How will the climate in New York be in 2026?",
+            "Is it getting hotter in New York between 2025 and 2028?",
+        ]
+    }
 
-# Vectorstore loader with caching
+    selected_q = st.selectbox("Sample Questions", [""] + sample_qs.get(qa_type, []))
+    if selected_q:
+        st.session_state["question"] = selected_q
+
+with col2:
+    question = st.text_input("Ask your question:", value=st.session_state.get("question", ""))
+
+# Vectorstore cache
 @st.cache_resource
 def load_vectorstore(index_path):
     embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
@@ -94,7 +99,7 @@ Answer:""",
 if question:
     with st.spinner("Thinking..."):
 
-        # Select index and prompt
+        # Vector index selection
         if qa_type == "Historical Climate":
             index_path = "faiss_index"
             prompt = climate_prompt
@@ -109,7 +114,7 @@ if question:
             st.error("Unknown dataset type.")
             st.stop()
 
-        # Load model/vector DB
+        # LLM + Retrieval
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=openai_api_key)
         if mode == "RAG (with retrieval)":
             vectorstore = load_vectorstore(index_path)
@@ -121,33 +126,39 @@ if question:
             )
             response = qa_chain.invoke(question)
 
-            st.write("### Answer")
+            st.markdown("### Answer")
             st.markdown(f"<div style='font-size: 16px; line-height: 1.6;'>{response['result']}</div>", unsafe_allow_html=True)
 
             with st.expander("Retrieved Source Chunks"):
                 for doc in response["source_documents"]:
                     st.code(doc.page_content)
 
-            # Line chart for stock data if applicable
+            # Charting: detect date range + ticker from question
             if qa_type == "Stock History":
                 date_range = re.findall(r"(20\d{2})", question)
+                company_to_ticker = {
+                    "apple": "AAPL", "tesla": "TSLA", "microsoft": "MSFT",
+                    "amazon": "AMZN", "johnson": "JNJ"
+                }
                 ticker = None
-                for t in ["AAPL", "TSLA", "MSFT", "JNJ", "AMZN"]:
-                    if t.lower() in question.lower():
-                        ticker = t
+                for name, symbol in company_to_ticker.items():
+                    if name in question.lower():
+                        ticker = symbol
                         break
-                if ticker and len(date_range) >= 1:
+
+                if ticker and date_range:
                     try:
                         df = pd.read_csv(f"data/full_history/{ticker}.csv")
                         df["date"] = pd.to_datetime(df["date"], errors="coerce")
-                        df = df.dropna(subset=["date"])
-                        df = df.sort_values("date")
+                        df = df.dropna(subset=["date"]).sort_values("date")
+
                         if len(date_range) == 1:
                             year = int(date_range[0])
                             df = df[df["date"].dt.year == year]
                         elif len(date_range) >= 2:
                             y1, y2 = int(date_range[0]), int(date_range[1])
                             df = df[(df["date"].dt.year >= y1) & (df["date"].dt.year <= y2)]
+
                         if not df.empty:
                             st.markdown("#### Price Trend (Close)")
                             st.line_chart(df.set_index("date")["close"])
@@ -156,5 +167,5 @@ if question:
 
         else:
             response = llm.invoke(question)
-            st.write("### Answer")
+            st.markdown("### Answer")
             st.markdown(f"<div style='font-size: 16px; line-height: 1.6;'>{response.content}</div>", unsafe_allow_html=True)
