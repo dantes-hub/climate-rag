@@ -10,32 +10,33 @@ from langchain.prompts import PromptTemplate
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
-# UI setup
-st.set_page_config(page_title="RAG Climate QA", layout="centered")
-st.title(" RAG Q&A Climate(New York) by Anka")
+# Page settings
+st.set_page_config(page_title="RAG Assistant | Climate & Finance", layout="centered")
+st.title("RAG Q&A Assistant by Anka")
 
-# Dropdown to choose dataset
+st.markdown("Ask intelligent questions about historical **climate** in New York or explore **stock market performance** over the years.")
+
+# Dataset selector
 qa_type = st.selectbox(
-    "Choose Dataset Type",
-    ["Historical Climate", "Forecast Climate"],
+    "🔍 Choose Dataset Domain",
+    ["Historical Climate", "Forecast Climate", "Stock History"],
     index=0,
 )
 
 # Mode selector
-mode = st.radio("Choose Answering Mode", ["RAG (with retrieval)", "GPT-only (no retrieval)"])
+mode = st.radio("Answering Mode", ["RAG (with retrieval)", "GPT-only (no retrieval)"])
 
-# Load embeddings
+# Embedding cache
 @st.cache_resource
 def load_vectorstore(index_path):
     embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
     return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
 
-# Prompt
-custom_prompt = PromptTemplate(
+# Custom prompts per domain
+climate_prompt = PromptTemplate(
     template="""
-You are a helpful weather assistant. Use the context below to answer the question.
+You are a helpful climate assistant. Use the context below to answer the question.
 If the context contains multiple monthly temperatures from the same year, estimate the yearly average temperature based on available data.
-Be precise and reference actual values when possible.
 
 Context:
 {context}
@@ -46,37 +47,67 @@ Answer:
     input_variables=["context", "question"],
 )
 
-# LLM
-llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=openai_api_key)
+stock_prompt = PromptTemplate(
+    template="""
+You are a financial assistant helping users understand historical stock trends.
+Always use precise numbers and context from the retrieved documents. Don't guess—only answer based on the provided context.
 
-# Question box
-question = st.text_input("Ask your climate question:")
+Context:
+{context}
 
-# Answering logic
+Question: {question}
+Answer:
+""",
+    input_variables=["context", "question"],
+)
+
+# Question input
+question = st.text_input("❓ Ask your question:")
+
+# Logic
 if question:
     with st.spinner("Thinking..."):
 
-        # Choose vectorstore path based on dropdown
+        # Dataset-specific configuration
         if qa_type == "Historical Climate":
             index_path = "faiss_index"
-        else:
+            prompt = climate_prompt
+        elif qa_type == "Forecast Climate":
             index_path = "faiss_index_forecast"
+            prompt = climate_prompt
+        elif qa_type == "Stock History":
+            index_path = "faiss_index/stock_index"
+            prompt = stock_prompt
+            
+            if not os.path.exists("faiss_index/stock_index/index.faiss"):
+                with st.spinner("Rebuilding FAISS index for Stock History..."):
+                    from embed_stock import build_stock_index
+                    build_stock_index()
+
+        else:
+            st.error("Unknown dataset type.")
+            st.stop()
+
+        # LLM setup
+        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=openai_api_key)
 
         if mode == "RAG (with retrieval)":
             vectorstore = load_vectorstore(index_path)
             qa_chain = RetrievalQA.from_chain_type(
                 llm=llm,
-                retriever=vectorstore.as_retriever(search_kwargs={"k": 12}),
+                retriever=vectorstore.as_retriever(search_kwargs={"k": 10}),
                 return_source_documents=True,
-                chain_type_kwargs={"prompt": custom_prompt}
+                chain_type_kwargs={"prompt": prompt}
             )
             response = qa_chain.invoke(question)
+
             st.subheader("Answer (RAG)")
             st.write(response["result"])
 
-            st.subheader("Retrieved Sources")
-            for doc in response["source_documents"]:
-                st.markdown(f"- {doc.page_content}")
+            with st.expander("Retrieved Source Chunks"):
+                for doc in response["source_documents"]:
+                    st.markdown(f"- {doc.page_content}")
+
         else:
             response = llm.invoke(question)
             st.subheader("Answer (GPT Only)")
