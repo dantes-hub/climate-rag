@@ -45,8 +45,8 @@ with col1:
 
     sample_qs = {
         "Stock History": [
-            "Show a chart of Tesla stock in 2020",
-            "What was Apple’s highest price in 2020?",
+            "Show a chart of Tesla stock in 2017",
+            "What was Apple’s highest price in 2010?",
             "Plot Microsoft trend during 2019",
         ],
         "Historical Climate": [
