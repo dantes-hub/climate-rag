@@ -35,22 +35,19 @@ st.markdown("Ask intelligent questions based on retrieved data from vector datab
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    # Vector DB selector
     qa_type = st.selectbox(
         "Select Vector Database Source",
         ["Historical Climate", "Forecast Climate", "Stock History"],
         index=0,
     )
 
-    # Mode selector
     mode = st.radio("Answering Mode", ["RAG (with retrieval)", "GPT-only (no retrieval)"])
 
-    # Sample questions per dataset
     sample_qs = {
         "Stock History": [
-            "What was the closing price of Tesla on July 2, 2020?",
+            "Show a chart of Tesla stock in 2020",
             "What was Apple’s highest price in 2020?",
-            "How did Microsoft perform during 2019?",
+            "Plot Microsoft trend during 2019",
         ],
         "Historical Climate": [
             "What was the average temperature in New York in July 1990?",
@@ -69,13 +66,11 @@ with col1:
 with col2:
     question = st.text_input("Ask your question:", value=st.session_state.get("question", ""))
 
-# Vectorstore cache
 @st.cache_resource
 def load_vectorstore(index_path):
     embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
     return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True)
 
-# Prompts
 climate_prompt = PromptTemplate(
     template="""You are a helpful climate assistant. Use the context below to answer the question.
 Context:
@@ -95,11 +90,9 @@ Answer:""",
     input_variables=["context", "question"],
 )
 
-# Run QA
 if question:
     with st.spinner("Thinking..."):
 
-        # Vector index selection
         if qa_type == "Historical Climate":
             index_path = "faiss_index"
             prompt = climate_prompt
@@ -114,8 +107,8 @@ if question:
             st.error("Unknown dataset type.")
             st.stop()
 
-        # LLM + Retrieval
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=openai_api_key)
+
         if mode == "RAG (with retrieval)":
             vectorstore = load_vectorstore(index_path)
             qa_chain = RetrievalQA.from_chain_type(
@@ -133,20 +126,24 @@ if question:
                 for doc in response["source_documents"]:
                     st.code(doc.page_content)
 
-            # Charting: detect date range + ticker from question
+            # Chart logic: trigger only if user mentions "chart", etc.
             if qa_type == "Stock History":
-                date_range = re.findall(r"(20\d{2})", question)
+                question_lower = question.lower()
+                chart_keywords = ["chart", "plot", "graph", "trend", "visual"]
+                date_range = re.findall(r"(20\d{2})", question_lower)
+
                 company_to_ticker = {
                     "apple": "AAPL", "tesla": "TSLA", "microsoft": "MSFT",
                     "amazon": "AMZN", "johnson": "JNJ"
                 }
+
                 ticker = None
                 for name, symbol in company_to_ticker.items():
-                    if name in question.lower():
+                    if name in question_lower:
                         ticker = symbol
                         break
 
-                if ticker and date_range:
+                if ticker and date_range and any(k in question_lower for k in chart_keywords):
                     try:
                         df = pd.read_csv(f"data/full_history/{ticker}.csv")
                         df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -160,10 +157,10 @@ if question:
                             df = df[(df["date"].dt.year >= y1) & (df["date"].dt.year <= y2)]
 
                         if not df.empty:
-                            st.markdown("#### Price Trend (Close)")
+                            st.markdown(f"#### {ticker} Price Trend")
                             st.line_chart(df.set_index("date")["close"])
                     except Exception as e:
-                        st.info(f"Chart error: {str(e)}")
+                        st.error(f"Chart error: {str(e)}")
 
         else:
             response = llm.invoke(question)
