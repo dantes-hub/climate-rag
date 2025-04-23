@@ -5,6 +5,18 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
+import requests, zipfile, io
+
+def download_and_extract_faiss_index():
+    index_dir = "faiss_index/stock_index"
+    if not os.path.exists(f"{index_dir}/index.faiss"):
+        os.makedirs(index_dir, exist_ok=True)
+        st.info("📦 Downloading FAISS index from Dropbox...")
+        url = "https://www.dropbox.com/scl/fi/bajzvodai1zvwf6h7n6vt/index.zip?rlkey=apuxm3tiuuy5jielyne1xb0mv&st=f74v78kb&dl=1"
+        r = requests.get(url)
+        z = zipfile.ZipFile(io.BytesIO(r.content))
+        z.extractall(index_dir)
+        st.success("FAISS index downloaded and extracted.")
 
 # Load environment variables
 load_dotenv()
@@ -78,11 +90,8 @@ if question:
         elif qa_type == "Stock History":
             index_path = "faiss_index/stock_index"
             prompt = stock_prompt
-            
-            if not os.path.exists("faiss_index/stock_index/index.faiss"):
-                with st.spinner("Rebuilding FAISS index for Stock History..."):
-                    from embed_stock import build_stock_index
-                    build_stock_index()
+
+            download_and_extract_faiss_index()
 
         else:
             st.error("Unknown dataset type.")

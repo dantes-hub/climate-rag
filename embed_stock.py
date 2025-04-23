@@ -1,35 +1,26 @@
-# embed_stock.py
-import os
-import pandas as pd
+import pickle
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
+from dotenv import load_dotenv
+import os
 
-def build_stock_index():
-    docs = []
+# Load API key from .env
+load_dotenv()
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
-    for file in os.listdir("data/full_history"):
-        if file.endswith(".csv"):
-            ticker = file.replace('.csv', '')
-            path = os.path.join("data/full_history", file)
-            df = pd.read_csv(path)
+# Load preprocessed chunks
+with open("stock_chunks.pkl", "rb") as f:
+    chunk_data = pickle.load(f)
 
-            for _, row in df.iterrows():
-                try:
-                    text = (
-                        f"On {row['date']}, {ticker} opened at ${float(row['open']):.2f}, "
-                        f"reached a high of ${float(row['high']):.2f}, a low of ${float(row['low']):.2f}, "
-                        f"and closed at ${float(row['close']):.2f}. Volume traded was {int(row['volume']):,} shares."
-                    )
-                    metadata = {
-                        "ticker": ticker,
-                        "date": row['date'],
-                        "type": "stock_history"
-                    }
-                    docs.append(Document(page_content=text, metadata=metadata))
-                except:
-                    continue
+# Build LangChain documents
+docs = [Document(page_content=c["text"], metadata=c["metadata"]) for c in chunk_data]
 
-    embeddings = OpenAIEmbeddings()
-    vectorstore = FAISS.from_documents(docs, embeddings)
-    vectorstore.save_local("faiss_index/stock_index")
+# Create embedding model
+embedding = OpenAIEmbeddings(openai_api_key=openai_api_key)
+
+# Build FAISS index and save it
+vectorstore = FAISS.from_documents(docs, embedding)
+vectorstore.save_local("faiss_index/stock_index")
+
+print("Vector store created and saved.")
