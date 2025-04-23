@@ -29,14 +29,14 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 # Page settings
 st.set_page_config(page_title="RAG Assistant | Climate & Finance", layout="centered")
 st.title("RAG Q&A Assistant by Anka")
-st.markdown("Ask intelligent questions based on retrieved data from vector databases:")
+st.markdown("Ask intelligent questions based on retrieved data from AI (RAG):")
 
 # Layout split: left = controls, right = question/results
 col1, col2 = st.columns([1, 2])
 
 with col1:
     qa_type = st.selectbox(
-        "Select Vector Database Source",
+        "Datasets & Action",
         ["Historical Climate", "Forecast Climate", "Stock History"],
         index=0,
     )
