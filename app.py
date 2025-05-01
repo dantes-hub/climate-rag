@@ -37,7 +37,7 @@ col1, col2 = st.columns([1, 2])
 with col1:
     qa_type = st.selectbox(
         "Datasets & Action",
-        ["Historical Climate", "Forecast Climate", "Stock History"],
+        ["Historical Climate", "Forecast Climate", "Stock History", "Stock Forecast"],
         index=0,
     )
 
@@ -56,7 +56,13 @@ with col1:
         "Forecast Climate": [
             "How will the climate in New York be in 2026?",
             "Is it getting hotter in New York between 2025 and 2028?",
+        ],
+        "Stock Forecast": [
+            "What is the predicted price of Apple in 2028?",
+            "Show Tesla stock forecast in 2026",
+            "How will Microsoft stock trend in 2027?",
         ]
+
     }
 
     selected_q = st.selectbox("Sample Questions", [""] + sample_qs.get(qa_type, []))
@@ -99,6 +105,9 @@ if question:
         elif qa_type == "Forecast Climate":
             index_path = "faiss_index_forecast"
             prompt = climate_prompt
+        elif qa_type == "Stock Forecast":
+            index_path = "faiss_index/stock_forecast_2026_2030"
+            prompt = stock_prompt    
         elif qa_type == "Stock History":
             index_path = "faiss_index/stock_index"
             prompt = stock_prompt
