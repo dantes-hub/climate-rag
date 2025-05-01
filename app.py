@@ -122,7 +122,7 @@ if question:
             vectorstore = load_vectorstore(index_path)
             qa_chain = RetrievalQA.from_chain_type(
                 llm=llm,
-                retriever=vectorstore.as_retriever(search_kwargs={"k": 10}),
+                retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),
                 return_source_documents=True,
                 chain_type_kwargs={"prompt": prompt}
             )
