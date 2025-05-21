@@ -1,0 +1,4 @@
+.env
+__pycache__/
+data/global_temperatures.csv
+stock_chunks.pkl
