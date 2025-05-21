@@ -28,7 +28,7 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 
 # Page settings
 st.set_page_config(page_title="RAG Assistant | Climate & Finance", layout="centered")
-st.title("RAG Q&A Assistant by Anka")
+st.title("RAG Q&A Assistant by Ankha")
 st.markdown("Ask intelligent questions based on retrieved data from AI (RAG):")
 
 # Layout split: left = controls, right = question/results
